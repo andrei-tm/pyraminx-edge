@@ -1,227 +1,165 @@
-import * as THREE from 'three';
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import * as TWEEN from '@tweenjs/tween.js';
+// Array representing the Pyraminx (28 values, 7 for each side)
+// First 7: front face (original red)
+// Next 7: right face (original yellow)
+// Next 7: left face (original green)
+// Last 7: bottom face (the corner red/yellow pointing up)
+let pyraminx_solved = [
+    'red', 'red', 'red', 'red', 'red', 'red', 'red',  // Side 1
+    'yellow', 'yellow', 'yellow', 'yellow', 'yellow', 'yellow', 'yellow', // Side 2
+    'green', 'green', 'green', 'green', 'green', 'green', 'green', // Side 3
+    'blue', 'blue', 'blue', 'blue', 'blue', 'blue', 'blue'  // Side 4
+];
 
-// --- Basic Scene Setup ---
-let scene, camera, renderer, controls;
-let pyraminxGroup; // A group to hold all pieces
-let pieces = { tips: [], edges: [] }; // To store references to piece meshes
-let isRotating = false; // Prevent multiple rotations at once
+let initial_colors_top_swap = [
+  'red', 'yellow', 'yellow', 'yellow', 'red','red', 'red',  // Side 1
+  'yellow', 'green', 'green', 'green', 'yellow', 'yellow', 'yellow', // Side 2
+  'green', 'red', 'red', 'red', 'green', 'green', 'green', // Side 3
+  'blue', 'blue', 'blue', 'blue', 'blue', 'blue', 'blue'  // Side 4       
+];
 
-// --- Constants ---
-const COLORS = {
-    R: new THREE.Color(0xff0000), // Red
-    G: new THREE.Color(0x00cc00), // Green
-    B: new THREE.Color(0x0000ff), // Blue
-    Y: new THREE.Color(0xffff00), // Yellow
-    BLACK: new THREE.Color(0x202020) // Plastic color
-};
+let initial_colors = [
+    'red', 'yellow', 'blue', 'blue', 'red', 'green', 'green',  // Side 1
+    'yellow', 'green', 'blue', 'blue', 'yellow', 'blue', 'yellow', // Side 2
+    'green', 'green', 'yellow', 'yellow', 'blue', 'red', 'green', // Side 3
+    'blue', 'red', 'red', 'yellow', 'green', 'red', 'red'  // Side 4       
+];
 
-const ROTATION_ANGLE = Math.PI * 2 / 3; // 120 degrees
+const right_up = [0, 22, 2, 3, 4, 26, 27, // 5, 6, 1 move to face 3
+                  7, 12, 13, 8, 9, 10, 11,
+                  14, 15, 16,  5, 6, 1, 20, // 17, 18, 19 move to face 4
+                  21, 19 , 23, 24, 25, 17, 18]; // 22, 26, 27, move to face 1
+const left_up = [0, 1, 2, 3, 4, 5, 6,
+                 7, 8, 9, 10, 11, 12, 13,
+                 14, 15, 16, 17, 18, 19, 20,
+                 21, 22, 23, 24, 25, 26, 27];
+const turn_right = [7, 8, 9, 10, 11, 12, 13,
+                    14, 15, 16, 17, 18, 19, 20,
+                    0, 1, 2, 3, 4, 5, 6,
+                    21, 24, 25, 26, 27, 22, 23];
 
-// Define axes and piece indices for each layer rotation
-// Note: Axes and indices depend heavily on the initial piece setup
-// These might need adjustment based on precise geometry and orientation
-const LAYERS = {
-    R: { axis: new THREE.Vector3(0, 1, 0), tipIndices: [0], edgeIndices: [0, 1, 2] }, // Example
-    G: { axis: new THREE.Vector3(1, 0, 0), tipIndices: [1], edgeIndices: [0, 3, 4] }, // Example
-    B: { axis: new THREE.Vector3(0, 0, 1), tipIndices: [2], edgeIndices: [1, 3, 5] }, // Example
-    Y: { axis: new THREE.Vector3(-1, -1, -1).normalize(), tipIndices: [3], edgeIndices: [2, 4, 5] } // Example
-    // IMPORTANT: Actual axes need calculation based on tetrahedron geometry
-};
-
-// --- Initialization ---
-function init() {
-    // Scene
-    scene = new THREE.Scene();
-    scene.background = new THREE.Color(0xaaaaaa);
-
-    // Camera
-    camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 100);
-    camera.position.set(5, 5, 5); // Adjusted camera position
-
-    // Renderer
-    renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    document.body.appendChild(renderer.domElement);
-
-    // Lighting
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
-    scene.add(ambientLight);
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    directionalLight.position.set(5, 10, 7.5);
-    scene.add(directionalLight);
-
-    // Controls
-    controls = new OrbitControls(camera, renderer.domElement);
-    controls.enableDamping = true;
-
-    // Pyraminx Group
-    pyraminxGroup = new THREE.Group();
-    scene.add(pyraminxGroup);
-
-    // Create Pieces (Simplified)
-    createPyraminxPieces();
-
-    // Setup Rotation Buttons
-    setupButtons();
-
-    // Handle Window Resize
-    window.addEventListener('resize', onWindowResize);
-
-    // Start Animation Loop
-    animate();
-}
-
-// --- Create Pyraminx Pieces (Simplified) ---
-function createPyraminxPieces() {
-    // --- Geometry & Materials (Simplified) ---
-    // Using Tetrahedron for tips, maybe scaled boxes/custom shapes for edges
-    // This requires significant geometric calculation for accurate shapes & placement.
-    // For this example, we'll create placeholder shapes.
-
-    const tipGeometry = new THREE.TetrahedronGeometry(0.5);
-    const edgeGeometry = new THREE.BoxGeometry(0.8, 0.2, 0.2); // Placeholder
-
-    // Create 4 Tips
-    for (let i = 0; i < 4; i++) {
-        // Assign materials/colors per face - complex for standard geometry
-        // For simplicity, using a single color material here
-        const material = new THREE.MeshStandardMaterial({
-             color: Object.values(COLORS)[i % 4], // Cycle through R,G,B,Y for demo
-             roughness: 0.5,
-             metalness: 0.2
-        });
-        const tip = new THREE.Mesh(tipGeometry, material);
-        // Position tips at corners of a larger tetrahedron - requires calculation
-        // Placeholder positions:
-        const positions = [
-             [ 0, 1.5, 0], // Top (approx)
-             [ 1, 0, 1], // Corner 1 (approx)
-             [-1, 0, 1], // Corner 2 (approx)
-             [ 0, 0, -1]  // Corner 3 (approx) - Needs adjustment for tetrahedron
-        ];
-         // Correct positioning needs vertex calculation for a tetrahedron
-         // E.g., using vertices like: (1,1,1), (1,-1,-1), (-1,1,-1), (-1,-1,1) scaled appropriately
-        tip.position.set(...positions[i]);
-        tip.userData = { id: `T${i}`, type: 'tip', index: i };
-        pieces.tips.push(tip);
-        pyraminxGroup.add(tip);
+// Function to permute the Pyraminx colors
+function permutePyraminx(pyraminx, rotation) {
+    const shuffled = [...pyraminx];
+    let print_string = "";
+    for (let i = shuffled.length - 1; i >= 0; i--) {
+        pyraminx[i] = shuffled[rotation[i]];
+        print_string += pyraminx[i] + " ";
     }
-
-     // Create 6 Edges
-    for (let i = 0; i < 6; i++) {
-         // Multi-material approach needed for correct sticker colors
-         const material = new THREE.MeshStandardMaterial({
-             color: COLORS.BLACK, // Placeholder plastic color
-             roughness: 0.5,
-             metalness: 0.2
-         });
-         const edge = new THREE.Mesh(edgeGeometry, material);
-         // Position edges between tips - requires calculation
-         // Placeholder positions:
-         edge.position.set(Math.random() * 2 - 1, Math.random() * 2, Math.random() * 2 - 1);
-         edge.lookAt(pyraminxGroup.position); // Orient roughly
-         edge.userData = { id: `E${i}`, type: 'edge', index: i };
-         pieces.edges.push(edge);
-         pyraminxGroup.add(edge);
-     }
-
-    // --- IMPORTANT LIMITATION ---
-    // This creation part is highly simplified. A real simulator needs:
-    // 1. Accurate geometry for tips and especially edge pieces.
-    // 2. Correct positioning and orientation of all 10 pieces to form the tetrahedron.
-    // 3. Applying multiple materials (colors) to the specific faces of each piece's geometry
-    //    to represent the stickers accurately (e.g., using materialIndex on BufferGeometry).
-    // 4. Correctly calculating rotation axes based on the final geometry.
-    console.warn("Piece geometry, placement, coloring, and rotation axes are simplified placeholders in this example.");
+    // console.log("new config " + print_string);
+    return print_string;
 }
 
+let pyraminx = initial_colors.slice(); // Copy of the solved Pyraminx
 
-// --- Setup Button Listeners ---
-function setupButtons() {
-    document.getElementById('rotate-r')?.addEventListener('click', () => rotateLayer('R', true));
-    document.getElementById('rotate-g')?.addEventListener('click', () => rotateLayer('G', true));
-    document.getElementById('rotate-b')?.addEventListener('click', () => rotateLayer('B', true));
-    document.getElementById('rotate-y')?.addEventListener('click', () => rotateLayer('Y', true));
-    // Could add buttons for counter-clockwise or use shift-click etc.
+let visited = new Map(); // Set to track visited configurations
+let total = 0;
+let found_solution = false;
+
+function dfs(depth, solution = '') {
+  if (found_solution) {
+    return true; // Stop searching if a solution is found
+  }
+  // console.log("trying " + JSON.stringify(pyraminx));
+  if (depth > 25) {
+    return false; // Limit depth to 20
+  }
+  if (JSON.stringify(pyraminx) === JSON.stringify(pyraminx_solved)) {
+    // found a solution r r t r r t r r t r r t r r t r r t r r t r r t r r t r r t r r t r r t r r t r r t r r t r r t r r t r r t r r t r r t r r t r t r r t r t r r t r r t r r t r t r t t r r t r t r r t r t r t r t r r 
+    // found a solution r r t r r t r r t r r t r r t r r t r r t r r t r r t r r t r r t r r t r r t r r t r r t r r t r r t r r t r r t t r t r r t t r r t r t t r t t r t t r r t t r r t r r t r r t r t r r t r r t r r t
+    console.log("found a solution " + solution);
+    let textElement = document.getElementById('solutionTextElement');
+    textElement.textContent = "Solution: " + solution;  
+    found_solution = true;
+    return true;
+  }
+  if (visited.has(JSON.stringify(pyraminx)) && visited.get(JSON.stringify(pyraminx)) <= depth) {
+    // console.log("already visited " + JSON.stringify(pyraminx) + " at depth " + visited.get(JSON.stringify(pyraminx)));
+    return false; // Already visited this configuration
+  }
+  visited.set(JSON.stringify(pyraminx), depth); // Mark this configuration as visited
+  total++;
+  if (total % 1000000 === 0) {
+    console.log("total " + total);
+  }
+
+  permutePyraminx(pyraminx, right_up);
+  dfs(depth + 1, solution + 'r ');
+  // revert the last move
+  permutePyraminx(pyraminx, right_up);
+  dfs(depth + 1, solution + 'rr ');
+  permutePyraminx(pyraminx, right_up);
+  
+  permutePyraminx(pyraminx, turn_right);
+  dfs(depth + 1, solution + 't ');
+  // revert the last move
+  permutePyraminx(pyraminx, turn_right);
+  dfs(depth + 1, solution + 'tt ');
+  
+  permutePyraminx(pyraminx, turn_right);
 }
 
-// --- Rotate Layer Function ---
-function rotateLayer(layerKey, clockwise = true) {
-    if (isRotating) return; // Don't start a new rotation if one is in progress
-    isRotating = true;
+pyraminx = initial_colors.slice();
 
-    const layerInfo = LAYERS[layerKey];
-    if (!layerInfo) {
-        console.error("Invalid layer key:", layerKey);
-        isRotating = false;
-        return;
-    }
+// Function to update the visible triangle
+function updateTriangleView(sideIndex) {
+    const startIndex = sideIndex * 7;
+    const visibleColors = pyraminx.slice(startIndex, startIndex + 7);
 
-    const angle = clockwise ? -ROTATION_ANGLE : ROTATION_ANGLE;
-    const duration = 500; // milliseconds for rotation animation
-
-    // Identify pieces in the layer
-    const rotationGroup = new THREE.Group();
-    const piecesToRotate = [];
-
-    layerInfo.tipIndices.forEach(index => {
-        if (pieces.tips[index]) piecesToRotate.push(pieces.tips[index]);
+    visibleColors.forEach((color, i) => {
+        const part = document.getElementById(`part-${i}`);
+        if (part) {
+            part.setAttribute('fill', color); // Set the fill color
+        }
     });
-    layerInfo.edgeIndices.forEach(index => {
-         if (pieces.edges[index]) piecesToRotate.push(pieces.edges[index]);
+}
+
+// Initialize with the first side
+updateTriangleView(0);
+
+function setText() {
+    let textElement = document.getElementById('solutionTextElement');
+    textElement.textContent = "Searching for solution...";
+}
+
+// Wait for the DOM to be fully loaded before running script
+document.addEventListener('DOMContentLoaded', (event) => {
+
+    // Get references to the buttons
+    const button1 = document.getElementById('button1');
+    const button2 = document.getElementById('button2');
+    const button3 = document.getElementById('button3');
+    const button4 = document.getElementById('button4');
+
+    // Get a reference to a part of the SVG to manipulate (example)
+    const topRhombus = document.getElementById('part-0');
+    const centerTriangle = document.getElementById('part-6');
+
+    // --- Define Actions for Buttons ---
+
+    // Action for Button 1: Change color of the top rhombus
+    button1.addEventListener('click', () => {
+        permutePyraminx(pyraminx, right_up);
+        updateTriangleView(0);
     });
 
-    if (piecesToRotate.length === 0) {
-         console.warn("No pieces found for layer:", layerKey);
-         isRotating = false;
-         return;
-    }
-
-    // Move pieces to the temporary rotation group
-    // Using attach preserves world transforms temporarily
-    piecesToRotate.forEach(piece => {
-        pyraminxGroup.attach(piece); // Ensure it's parented to the main group first
-        rotationGroup.attach(piece); // Attach to rotation group
+    // Action for Button 2: Change color of the center triangle
+    button2.addEventListener('click', () => {
+        permutePyraminx(pyraminx, left_up);
+        updateTriangleView(0);
     });
-    scene.add(rotationGroup); // Add rotation group to scene
 
-    // --- Animation using TWEEN ---
-    new TWEEN.Tween(rotationGroup.rotation)
-        .to({ [layerInfo.axis.x ? 'x' : layerInfo.axis.y ? 'y' : 'z']: rotationGroup.rotation[layerInfo.axis.x ? 'x' : layerInfo.axis.y ? 'y' : 'z'] + angle }, duration)
-        .easing(TWEEN.Easing.Quadratic.Out) // Smooth easing
-        .onComplete(() => {
-            // Move pieces back to the main pyraminx group
-             piecesToRotate.forEach(piece => {
-                 rotationGroup.attach(piece); // Ensure parented before attaching back
-                 pyraminxGroup.attach(piece); // Attach back to main group
-             });
-            scene.remove(rotationGroup); // Remove temporary group
-            // --- State Update ---
-            // A real simulator would update its internal state representation here
-            // to know which sticker is where after the rotation.
-            console.log(`Layer ${layerKey} rotation finished.`);
-            isRotating = false;
-        })
-        .start();
-}
+    // Action for Button 3: Reset colors (or another action)
+    button3.addEventListener('click', () => {
+        permutePyraminx(pyraminx, turn_right);
+        updateTriangleView(0);
+    });
+    button4.addEventListener('click', () => {
+      setText();
+      dfs(0, '');
+      console.log("total " + total);
+    });
 
+    // You can add more complex logic or interactions here
+    console.log('Pyraminx Visualizer Ready!');
 
-// --- Handle Window Resize ---
-function onWindowResize() {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-}
-
-// --- Animation Loop ---
-function animate() {
-    requestAnimationFrame(animate);
-    controls.update(); // For damping
-    TWEEN.update(); // Update animations
-    renderer.render(scene, camera);
-}
-
-// --- Run ---
-init();
+}); // End of DOMContentLoaded listener

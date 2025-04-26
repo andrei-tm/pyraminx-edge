@@ -3,45 +3,47 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Pyraminx Edge Simulator</title>
+    <title>Pyraminx Edge Visualizer</title>
     <style>
-        body { margin: 0; overflow: hidden; font-family: sans-serif; }
-        canvas { display: block; }
-        #controls {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            background: rgba(0,0,0,0.5);
-            padding: 10px;
-            border-radius: 5px;
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
         }
-        button {
-            display: block;
-            margin: 5px 0;
-            padding: 8px 12px;
-            cursor: pointer;
+        svg {
+            width: 300px;
+            height: 300px;
         }
-        p { color: white; margin: 0 0 5px 0; }
+        polygon {
+            stroke: black;
+            stroke-width: 1;
+        }
+        .polygon-text {
+            z-index: 100;
+        }
     </style>
 </head>
 <body>
+    <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" id="pyraminx">
+        <polygon points="75,86 25,86 50,43" id="part-0"></polygon>
+        <!--text x="50" y="28.33" class="polygon-text">0</text--> 
+        <polygon points="100,100 83,100 75,86 90,86" id="part-1"></polygon>
+        <polygon points="83,100 15,100 25,86 75,86" id="part-2"></polygon>
+        <polygon points="0,100 8,86 25,86 15,100" id="part-3"></polygon>
+        <polygon points="25,86 10,86 42,29 50,43" id="part-4"></polygon>
+        <polygon points="50,43 42,29 50,14 58,29" id="part-5"></polygon>
+        <polygon points="90,86 75,86 50,43 58,29" id="part-6"></polygon>
+    </svg>
     <div id="controls">
-        <p>Rotate Layers (Tip + Edges):</p>
-        <button id="rotate-r">Rotate Red Layer (R)</button>
-        <button id="rotate-g">Rotate Green Layer (G)</button>
-        <button id="rotate-b">Rotate Blue Layer (B)</button>
-        <button id="rotate-y">Rotate Yellow Layer (Y)</button>
-         <p style="font-size: 0.8em; margin-top: 10px;">(Use mouse to rotate view)</p>
+        <button id="button1">Right up</button>
+        <button id="button2">Left up (not implemented) </button>
+        <button id="button3">Turn right</button>
+        <button id="button4">Find solution</button>
+        <div id="solutionTextElement"></div>
     </div>
-    <script type="importmap">
-        {
-            "imports": {
-                "three": "https://unpkg.com/three@0.163.0/build/three.module.js",
-                "three/addons/": "https://unpkg.com/three@0.163.0/examples/jsm/",
-                 "@tweenjs/tween.js": "https://unpkg.com/@tweenjs/tween.js@^23/dist/tween.esm.js"
-            }
-        }
-    </script>
-    <script type="module" src="app.js"></script>
+    <script src="./app.js"></script>
 </body>
 </html>
