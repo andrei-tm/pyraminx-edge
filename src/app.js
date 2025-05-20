@@ -28,9 +28,9 @@ const right_up = [0, 22, 2, 3, 4, 26, 27, // 5, 6, 1 move to face 3
                   7, 12, 13, 8, 9, 10, 11,
                   14, 15, 16,  5, 6, 1, 20, // 17, 18, 19 move to face 4
                   21, 19 , 23, 24, 25, 17, 18]; // 22, 26, 27, move to face 1
-const left_up = [0, 1, 2, 3, 4, 5, 6,
-                 7, 8, 9, 10, 11, 12, 13,
-                 14, 15, 16, 17, 18, 19, 20,
+const top_turn_right = [7, 1, 2, 3, 11, 12, 13,
+                 14, 8, 9, 10, 18, 19, 20,
+                 0, 15, 16, 17, 4, 5, 6,
                  21, 22, 23, 24, 25, 26, 27];
 const turn_right = [7, 8, 9, 10, 11, 12, 13,
                     14, 15, 16, 17, 18, 19, 20,
@@ -45,11 +45,10 @@ function permutePyraminx(pyraminx, rotation) {
         pyraminx[i] = shuffled[rotation[i]];
         print_string += pyraminx[i] + " ";
     }
-    // console.log("new config " + print_string);
     return print_string;
 }
 
-let pyraminx = initial_colors.slice(); // Copy of the solved Pyraminx
+let pyraminx = initial_colors_top_swap.slice(); // Copy of the solved Pyraminx
 
 let visited = new Map(); // Set to track visited configurations
 let total = 0;
@@ -60,12 +59,10 @@ function dfs(depth, solution = '') {
     return true; // Stop searching if a solution is found
   }
   // console.log("trying " + JSON.stringify(pyraminx));
-  if (depth > 25) {
-    return false; // Limit depth to 20
+  if (depth > 15) {
+    return false; // Limit depth to 15
   }
   if (JSON.stringify(pyraminx) === JSON.stringify(pyraminx_solved)) {
-    // found a solution r r t r r t r r t r r t r r t r r t r r t r r t r r t r r t r r t r r t r r t r r t r r t r r t r r t r r t r r t r r t r r t r t r r t r t r r t r r t r r t r t r t t r r t r t r r t r t r t r t r r 
-    // found a solution r r t r r t r r t r r t r r t r r t r r t r r t r r t r r t r r t r r t r r t r r t r r t r r t r r t r r t r r t t r t r r t t r r t r t t r t t r t t r r t t r r t r r t r r t r t r r t r r t r r t
     console.log("found a solution " + solution);
     let textElement = document.getElementById('solutionTextElement');
     textElement.textContent = "Solution: " + solution;  
@@ -84,21 +81,25 @@ function dfs(depth, solution = '') {
 
   permutePyraminx(pyraminx, right_up);
   dfs(depth + 1, solution + 'r ');
-  // revert the last move
   permutePyraminx(pyraminx, right_up);
   dfs(depth + 1, solution + 'rr ');
+  // revert the last move
   permutePyraminx(pyraminx, right_up);
   
   permutePyraminx(pyraminx, turn_right);
-  dfs(depth + 1, solution + 't ');
+  dfs(depth + 1, solution + 'tu ');
+  permutePyraminx(pyraminx, turn_right);
+  dfs(depth + 1, solution + 'tu_tu ');
   // revert the last move
   permutePyraminx(pyraminx, turn_right);
-  dfs(depth + 1, solution + 'tt ');
-  
-  permutePyraminx(pyraminx, turn_right);
-}
 
-pyraminx = initial_colors.slice();
+  /*permutePyraminx(pyraminx, top_turn_right);
+  dfs(depth + 1, solution + 'top ');
+  permutePyraminx(pyraminx, top_turn_right);
+  dfs(depth + 1, solution + 'top_top ');*/
+  // revert the last move
+  permutePyraminx(pyraminx, top_turn_right);
+}
 
 // Function to update the visible triangle
 function updateTriangleView(sideIndex) {
@@ -144,7 +145,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
 
     // Action for Button 2: Change color of the center triangle
     button2.addEventListener('click', () => {
-        permutePyraminx(pyraminx, left_up);
+        permutePyraminx(pyraminx, top_turn_right);
         updateTriangleView(0);
     });
 
@@ -155,6 +156,10 @@ document.addEventListener('DOMContentLoaded', (event) => {
     });
     button4.addEventListener('click', () => {
       setText();
+      // pyraminx = initial_colors.slice(); // Reset to initial colors
+      visited.clear(); // Clear visited configurations
+      total = 0;
+      found_solution = false; // Reset found solution flag
       dfs(0, '');
       console.log("total " + total);
     });
